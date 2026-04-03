@@ -10,6 +10,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.filters import Command
 
 # ===== НАСТРОЙКИ =====
+import os
+
 TOKEN = os.getenv("TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 
