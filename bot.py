@@ -1,23 +1,22 @@
+import asyncio
 import sqlite3
 from datetime import datetime
-from aiogram import Bot, Dispatcher, types
-from aiogram.utils import executor
-from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
-from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-# ================= НАСТРОЙКИ =================
+from aiogram import Bot, Dispatcher
+from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import StatesGroup, State
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.filters import Command
+
+# ===== НАСТРОЙКИ =====
 TOKEN = os.getenv("TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 
-# ============================================
-
 bot = Bot(token=TOKEN)
-dp = Dispatcher(bot, storage=MemoryStorage())
+dp = Dispatcher(storage=MemoryStorage())
 
-# база данных
+# ===== БАЗА =====
 conn = sqlite3.connect("reports.db")
 cursor = conn.cursor()
 
@@ -25,21 +24,20 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS reports (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
-    date TEXT,
-    cash_start REAL,
-    card_start REAL,
-    cash_income REAL,
-    card_income REAL,
-    cash_expense REAL,
-    card_expense REAL,
-    comment TEXT
+    date TEXT
 )
 """)
 conn.commit()
 
 # ===== КНОПКИ =====
-confirm_kb = ReplyKeyboardMarkup(resize_keyboard=True)
-confirm_kb.add(KeyboardButton("Да"), KeyboardButton("Изменить"))
+confirm_kb = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton(text="Да"), KeyboardButton(text="Изменить")]],
+    resize_keyboard=True
+)
+
+# ===== ФОРМАТ ДЕНЕГ =====
+def format_money(value):
+    return f"{int(value):,}".replace(",", " ")
 
 # ===== СОСТОЯНИЯ =====
 class ReportForm(StatesGroup):
@@ -65,13 +63,13 @@ class ReportForm(StatesGroup):
     confirm_comment = State()
 
 # ===== СТАРТ =====
-@dp.message_handler(commands=['start'])
-async def start(message: types.Message):
+@dp.message(Command("start"))
+async def start(message: Message):
     await message.answer("Используй /report для отправки отчёта")
 
 # ===== ПРОВЕРКА ДУБЛЯ =====
-@dp.message_handler(commands=['report'])
-async def start_report(message: types.Message):
+@dp.message(Command("report"))
+async def start_report(message: Message, state: FSMContext):
     date = datetime.now().strftime("%Y-%m-%d")
     user_id = message.from_user.id
 
@@ -85,195 +83,202 @@ async def start_report(message: types.Message):
         return
 
     await message.answer("Введите остаток НАЛИЧНЫХ:")
-    await ReportForm.cash_start.set()
+    await state.set_state(ReportForm.cash_start)
 
-# ===== НАЛИЧНЫЕ =====
-@dp.message_handler(state=ReportForm.cash_start)
-async def cash_start(message: types.Message, state: FSMContext):
+# ===== НАЛ =====
+@dp.message(ReportForm.cash_start)
+async def cash_start(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(cash_start=val)
-        await message.answer(f"{val} верно?", reply_markup=confirm_kb)
-        await ReportForm.confirm_cash_start.set()
+        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
+        await state.set_state(ReportForm.confirm_cash_start)
     except:
         await message.answer("Введите число")
 
-@dp.message_handler(state=ReportForm.confirm_cash_start)
-async def confirm_cash_start(message: types.Message, state: FSMContext):
+@dp.message(ReportForm.confirm_cash_start)
+async def confirm_cash(message: Message, state: FSMContext):
     if message.text == "Да":
         await message.answer("Введите остаток НА КАРТЕ:")
-        await ReportForm.card_start.set()
+        await state.set_state(ReportForm.card_start)
     else:
-        await message.answer("Введите заново:")
-        await ReportForm.cash_start.set()
+        await state.set_state(ReportForm.cash_start)
 
 # ===== КАРТА =====
-@dp.message_handler(state=ReportForm.card_start)
-async def card_start(message: types.Message, state: FSMContext):
+@dp.message(ReportForm.card_start)
+async def card_start(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(card_start=val)
-        await message.answer(f"{val} верно?", reply_markup=confirm_kb)
-        await ReportForm.confirm_card_start.set()
+        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
+        await state.set_state(ReportForm.confirm_card_start)
     except:
         await message.answer("Введите число")
 
-@dp.message_handler(state=ReportForm.confirm_card_start)
-async def confirm_card_start(message: types.Message, state: FSMContext):
+@dp.message(ReportForm.confirm_card_start)
+async def confirm_card(message: Message, state: FSMContext):
     if message.text == "Да":
         await message.answer("Введите поступления НАЛИЧНЫМИ:")
-        await ReportForm.cash_income.set()
+        await state.set_state(ReportForm.cash_income)
     else:
-        await message.answer("Введите заново:")
-        await ReportForm.card_start.set()
+        await state.set_state(ReportForm.card_start)
 
 # ===== ПОСТУПЛЕНИЯ НАЛ =====
-@dp.message_handler(state=ReportForm.cash_income)
-async def cash_income(message: types.Message, state: FSMContext):
+@dp.message(ReportForm.cash_income)
+async def cash_income(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(cash_income=val)
-        await message.answer(f"{val} верно?", reply_markup=confirm_kb)
-        await ReportForm.confirm_cash_income.set()
+        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
+        await state.set_state(ReportForm.confirm_cash_income)
     except:
         await message.answer("Введите число")
 
-@dp.message_handler(state=ReportForm.confirm_cash_income)
-async def confirm_cash_income(message: types.Message, state: FSMContext):
+@dp.message(ReportForm.confirm_cash_income)
+async def confirm_cash_income(message: Message, state: FSMContext):
     if message.text == "Да":
         await message.answer("Введите поступления НА КАРТУ:")
-        await ReportForm.card_income.set()
+        await state.set_state(ReportForm.card_income)
     else:
-        await message.answer("Введите заново:")
-        await ReportForm.cash_income.set()
+        await state.set_state(ReportForm.cash_income)
 
 # ===== ПОСТУПЛЕНИЯ КАРТА =====
-@dp.message_handler(state=ReportForm.card_income)
-async def card_income(message: types.Message, state: FSMContext):
+@dp.message(ReportForm.card_income)
+async def card_income(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(card_income=val)
-        await message.answer(f"{val} верно?", reply_markup=confirm_kb)
-        await ReportForm.confirm_card_income.set()
+        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
+        await state.set_state(ReportForm.confirm_card_income)
     except:
         await message.answer("Введите число")
 
-@dp.message_handler(state=ReportForm.confirm_card_income)
-async def confirm_card_income(message: types.Message, state: FSMContext):
+@dp.message(ReportForm.confirm_card_income)
+async def confirm_card_income(message: Message, state: FSMContext):
     if message.text == "Да":
         await message.answer("Введите расходы НАЛИЧНЫМИ:")
-        await ReportForm.cash_expense.set()
+        await state.set_state(ReportForm.cash_expense)
     else:
-        await message.answer("Введите заново:")
-        await ReportForm.card_income.set()
+        await state.set_state(ReportForm.card_income)
 
 # ===== РАСХОД НАЛ =====
-@dp.message_handler(state=ReportForm.cash_expense)
-async def cash_expense(message: types.Message, state: FSMContext):
+@dp.message(ReportForm.cash_expense)
+async def cash_expense(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(cash_expense=val)
-        await message.answer(f"{val} верно?", reply_markup=confirm_kb)
-        await ReportForm.confirm_cash_expense.set()
+        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
+        await state.set_state(ReportForm.confirm_cash_expense)
     except:
         await message.answer("Введите число")
 
-@dp.message_handler(state=ReportForm.confirm_cash_expense)
-async def confirm_cash_expense(message: types.Message, state: FSMContext):
+@dp.message(ReportForm.confirm_cash_expense)
+async def confirm_cash_expense(message: Message, state: FSMContext):
     if message.text == "Да":
         await message.answer("Введите расходы С КАРТЫ:")
-        await ReportForm.card_expense.set()
+        await state.set_state(ReportForm.card_expense)
     else:
-        await message.answer("Введите заново:")
-        await ReportForm.cash_expense.set()
+        await state.set_state(ReportForm.cash_expense)
 
 # ===== РАСХОД КАРТА =====
-@dp.message_handler(state=ReportForm.card_expense)
-async def card_expense(message: types.Message, state: FSMContext):
+@dp.message(ReportForm.card_expense)
+async def card_expense(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(card_expense=val)
-        await message.answer(f"{val} верно?", reply_markup=confirm_kb)
-        await ReportForm.confirm_card_expense.set()
+        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
+        await state.set_state(ReportForm.confirm_card_expense)
     except:
         await message.answer("Введите число")
 
-@dp.message_handler(state=ReportForm.confirm_card_expense)
-async def confirm_card_expense(message: types.Message, state: FSMContext):
+@dp.message(ReportForm.confirm_card_expense)
+async def confirm_card_expense(message: Message, state: FSMContext):
     if message.text == "Да":
         await message.answer("Кратко опишите расходы:")
-        await ReportForm.comment.set()
+        await state.set_state(ReportForm.comment)
     else:
-        await message.answer("Введите заново:")
-        await ReportForm.card_expense.set()
+        await state.set_state(ReportForm.card_expense)
 
 # ===== КОММЕНТАРИЙ =====
-@dp.message_handler(state=ReportForm.comment)
-async def comment(message: types.Message, state: FSMContext):
+@dp.message(ReportForm.comment)
+async def comment(message: Message, state: FSMContext):
     await state.update_data(comment=message.text)
     await message.answer("Все верно?", reply_markup=confirm_kb)
-    await ReportForm.confirm_comment.set()
+    await state.set_state(ReportForm.confirm_comment)
 
 # ===== ФИНАЛ =====
-@dp.message_handler(state=ReportForm.confirm_comment)
-async def finish(message: types.Message, state: FSMContext):
+@dp.message(ReportForm.confirm_comment)
+async def finish(message: Message, state: FSMContext):
     if message.text != "Да":
-        await message.answer("Введите заново:")
-        await ReportForm.comment.set()
+        await state.set_state(ReportForm.comment)
         return
 
     data = await state.get_data()
 
-    cash_end = data['cash_start'] + data['cash_income'] - data['cash_expense']
-    card_end = data['card_start'] + data['card_income'] - data['card_expense']
+    cash_start = data['cash_start']
+    card_start = data['card_start']
+    cash_income = data['cash_income']
+    card_income = data['card_income']
+    cash_expense = data['cash_expense']
+    card_expense = data['card_expense']
+    comment = "• " + data['comment'].replace(",", "\n•")
 
-    total_start = data['cash_start'] + data['card_start']
+    cash_end = cash_start + cash_income - cash_expense
+    card_end = card_start + card_income - card_expense
+
+    total_start = cash_start + card_start
     total_end = cash_end + card_end
 
-    date = datetime.now().strftime("%Y-%m-%d")
+    date = datetime.now().strftime("%d.%m.%Y")
     user = message.from_user.full_name
 
     text = f"""
-📅 {date}
-👤 {user}
+📅 Отчёт за {date}
 
-💵 Нал: {cash_end}
-💳 Карта: {card_end}
+👤 Сотрудник: {user}
 
-📊 Итого: {total_end}
+━━━━━━━━━━━━━━━━━━
+💵 НАЛИЧНЫЕ
+━━━━━━━━━━━━━━━━━━
+Начало:        {format_money(cash_start)} сум
+Поступления:   {format_money(cash_income)} сум
+Расходы:       {format_money(cash_expense)} сум
+Остаток:       {format_money(cash_end)} сум
 
-📝 {data['comment']}
+━━━━━━━━━━━━━━━━━━
+💳 КАРТА
+━━━━━━━━━━━━━━━━━━
+Начало:        {format_money(card_start)} сум
+Поступления:   {format_money(card_income)} сум
+Расходы:       {format_money(card_expense)} сум
+Остаток:       {format_money(card_end)} сум
+
+━━━━━━━━━━━━━━━━━━
+📊 ОБЩИЙ ИТОГ
+━━━━━━━━━━━━━━━━━━
+На начало:     {format_money(total_start)} сум
+На конец:      {format_money(total_end)} сум
+
+━━━━━━━━━━━━━━━━━━
+📝 РАСХОДЫ
+━━━━━━━━━━━━━━━━━━
+{comment}
 """
 
-    cursor.execute("""
-    INSERT INTO reports VALUES (NULL,?,?,?,?,?,?,?,?,?,?)
-    """, (
-        message.from_user.id, date,
-        data['cash_start'], data['card_start'],
-        data['cash_income'], data['card_income'],
-        data['cash_expense'], data['card_expense'],
-        data['comment']
-    ))
+    cursor.execute(
+        "INSERT INTO reports (user_id, date) VALUES (?, ?)",
+        (message.from_user.id, datetime.now().strftime("%Y-%m-%d"))
+    )
     conn.commit()
 
     await message.answer(text)
     await bot.send_message(CHANNEL_ID, text)
 
-    await state.finish()
-
-# ===== НАПОМИНАНИЕ =====
-scheduler = AsyncIOScheduler()
-
-async def reminder():
-    date = datetime.now().strftime("%Y-%m-%d")
-    for user in USERS:
-        cursor.execute("SELECT * FROM reports WHERE date=? AND user_id=?", (date, user))
-        if not cursor.fetchone():
-            await bot.send_message(user, "❗ Сдайте отчёт за сегодня")
-
-scheduler.add_job(reminder, "cron", hour=18)
-scheduler.start()
+    await state.clear()
 
 # ===== ЗАПУСК =====
+async def main():
+    await dp.start_polling(bot)
+
 if __name__ == "__main__":
-    executor.start_polling(dp)
+    asyncio.run(main())
