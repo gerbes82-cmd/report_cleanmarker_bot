@@ -33,7 +33,7 @@ conn.commit()
 
 # ===== КНОПКИ =====
 confirm_kb = ReplyKeyboardMarkup(
-    keyboard=[[KeyboardButton(text="Да"), KeyboardButton(text="Изменить")]],
+    keyboard=[[KeyboardButton(text="Ха"), KeyboardButton(text="Узгартириш")]],
     resize_keyboard=True
 )
 
@@ -84,7 +84,7 @@ async def start_report(message: Message, state: FSMContext):
         await message.answer("❗ Вы уже отправили отчёт за сегодня")
         return
 
-    await message.answer("Введите остаток НАЛИЧНЫХ:")
+    await message.answer("Кун бошига Накд колдик:")
     await state.set_state(ReportForm.cash_start)
 
 # ===== НАЛ =====
@@ -93,15 +93,15 @@ async def cash_start(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(cash_start=val)
-        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
+        await message.answer(f"{format_money(val)} сум\nТугрими?", reply_markup=confirm_kb)
         await state.set_state(ReportForm.confirm_cash_start)
     except:
-        await message.answer("Введите число")
+        await message.answer("Сон киритин")
 
 @dp.message(ReportForm.confirm_cash_start)
 async def confirm_cash(message: Message, state: FSMContext):
-    if message.text == "Да":
-        await message.answer("Введите остаток НА КАРТЕ:")
+    if message.text == "Ха":
+        await message.answer("Кун бошига Карта колдиги:")
         await state.set_state(ReportForm.card_start)
     else:
         await state.set_state(ReportForm.cash_start)
@@ -112,15 +112,15 @@ async def card_start(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(card_start=val)
-        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
+        await message.answer(f"{format_money(val)} сум\nТугрими?", reply_markup=confirm_kb)
         await state.set_state(ReportForm.confirm_card_start)
     except:
-        await message.answer("Введите число")
+        await message.answer("Сон киритин")
 
 @dp.message(ReportForm.confirm_card_start)
 async def confirm_card(message: Message, state: FSMContext):
-    if message.text == "Да":
-        await message.answer("Введите поступления НАЛИЧНЫМИ:")
+    if message.text == "Ха":
+        await message.answer("Кирим Накд:")
         await state.set_state(ReportForm.cash_income)
     else:
         await state.set_state(ReportForm.card_start)
@@ -131,15 +131,15 @@ async def cash_income(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(cash_income=val)
-        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
+        await message.answer(f"{format_money(val)} сум\nТугрими?", reply_markup=confirm_kb)
         await state.set_state(ReportForm.confirm_cash_income)
     except:
-        await message.answer("Введите число")
+        await message.answer("Сон киритин")
 
 @dp.message(ReportForm.confirm_cash_income)
 async def confirm_cash_income(message: Message, state: FSMContext):
-    if message.text == "Да":
-        await message.answer("Введите поступления НА КАРТУ:")
+    if message.text == "Ха":
+        await message.answer("Кирим КАРТА:")
         await state.set_state(ReportForm.card_income)
     else:
         await state.set_state(ReportForm.cash_income)
@@ -150,15 +150,15 @@ async def card_income(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(card_income=val)
-        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
+        await message.answer(f"{format_money(val)} сум\nТугрими?", reply_markup=confirm_kb)
         await state.set_state(ReportForm.confirm_card_income)
     except:
-        await message.answer("Введите число")
+        await message.answer("Сон киритин")
 
 @dp.message(ReportForm.confirm_card_income)
 async def confirm_card_income(message: Message, state: FSMContext):
-    if message.text == "Да":
-        await message.answer("Введите расходы НАЛИЧНЫМИ:")
+    if message.text == "Ха":
+        await message.answer("Чиким НАКД:")
         await state.set_state(ReportForm.cash_expense)
     else:
         await state.set_state(ReportForm.card_income)
@@ -169,15 +169,15 @@ async def cash_expense(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(cash_expense=val)
-        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
+        await message.answer(f"{format_money(val)} сум\nТугрими?", reply_markup=confirm_kb)
         await state.set_state(ReportForm.confirm_cash_expense)
     except:
-        await message.answer("Введите число")
+        await message.answer("Сон киритин")
 
 @dp.message(ReportForm.confirm_cash_expense)
 async def confirm_cash_expense(message: Message, state: FSMContext):
-    if message.text == "Да":
-        await message.answer("Введите расходы С КАРТЫ:")
+    if message.text == "Ха":
+        await message.answer("Чиким КАРТА:")
         await state.set_state(ReportForm.card_expense)
     else:
         await state.set_state(ReportForm.cash_expense)
@@ -188,15 +188,15 @@ async def card_expense(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(card_expense=val)
-        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
+        await message.answer(f"{format_money(val)} сум\nТугрими?", reply_markup=confirm_kb)
         await state.set_state(ReportForm.confirm_card_expense)
     except:
-        await message.answer("Введите число")
+        await message.answer("Сон киритин")
 
 @dp.message(ReportForm.confirm_card_expense)
 async def confirm_card_expense(message: Message, state: FSMContext):
-    if message.text == "Да":
-        await message.answer("Кратко опишите расходы:")
+    if message.text == "Ха":
+        await message.answer("Чикимлар киска изохи:")
         await state.set_state(ReportForm.comment)
     else:
         await state.set_state(ReportForm.card_expense)
@@ -205,13 +205,13 @@ async def confirm_card_expense(message: Message, state: FSMContext):
 @dp.message(ReportForm.comment)
 async def comment(message: Message, state: FSMContext):
     await state.update_data(comment=message.text)
-    await message.answer("Все верно?", reply_markup=confirm_kb)
+    await message.answer("Тугрими?", reply_markup=confirm_kb)
     await state.set_state(ReportForm.confirm_comment)
 
 # ===== ФИНАЛ =====
 @dp.message(ReportForm.confirm_comment)
 async def finish(message: Message, state: FSMContext):
-    if message.text != "Да":
+    if message.text != "Ха":
         await state.set_state(ReportForm.comment)
         return
 
@@ -235,34 +235,34 @@ async def finish(message: Message, state: FSMContext):
     user = message.from_user.full_name
 
     text = f"""
-📅 Отчёт за {date}
+📅 Хисобот {date}
 
-👤 Сотрудник: {user}
+👤 Ходим: {user}
 
 ━━━━━━━━━━━━━━━━━━
-💵 НАЛИЧНЫЕ
+💵 Накд
 ━━━━━━━━━━━━━━━━━━
-Начало:        {format_money(cash_start)} сум
-Поступления:   {format_money(cash_income)} сум
-Расходы:       {format_money(cash_expense)} сум
-Остаток:       {format_money(cash_end)} сум
+Кун бошига колдик:        {format_money(cash_start)} сум
+Кирим:   {format_money(cash_income)} сум
+Чиким:       {format_money(cash_expense)} сум
+Кун охирига колдик:       {format_money(cash_end)} сум
 
 ━━━━━━━━━━━━━━━━━━
 💳 КАРТА
 ━━━━━━━━━━━━━━━━━━
-Начало:        {format_money(card_start)} сум
-Поступления:   {format_money(card_income)} сум
-Расходы:       {format_money(card_expense)} сум
-Остаток:       {format_money(card_end)} сум
+Кун бошига колдик:        {format_money(card_start)} сум
+Кирим:   {format_money(card_income)} сум
+Чиким:       {format_money(card_expense)} сум
+Кун охирига колдик:       {format_money(card_end)} сум
 
 ━━━━━━━━━━━━━━━━━━
-📊 ОБЩИЙ ИТОГ
+📊 УМУМИЙ
 ━━━━━━━━━━━━━━━━━━
-На начало:     {format_money(total_start)} сум
-На конец:      {format_money(total_end)} сум
+Кун бошига колдик:     {format_money(total_start)} сум
+Кун охирига колдик:      {format_money(total_end)} сум
 
 ━━━━━━━━━━━━━━━━━━
-📝 РАСХОДЫ
+📝 ЧИКИМЛАР
 ━━━━━━━━━━━━━━━━━━
 {comment}
 """
