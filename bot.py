@@ -9,9 +9,8 @@ from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # ================= НАСТРОЙКИ =================
-TOKEN = 8555539646:AAFhxy3D7JZVQ0Z1qZHScpI2oTsLx0GL0r8
-CHANNEL_ID = -1003743525252  # ID канала
-USERS = []  # добавь ID сотрудников для напоминаний
+TOKEN = os.getenv("TOKEN")
+CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 
 # ============================================
 
