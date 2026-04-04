@@ -75,7 +75,7 @@ async def start(message: Message):
     )
 
 # ===== КНОПКА =====
-@dp.message(F.text == "📊 Новый отчёт")
+@dp.message(F.text == "📊 Хисобот")
 async def new_report(message: Message, state: FSMContext):
     if not is_allowed(message.from_user.id):
         await message.answer("⛔ У вас нет доступа")
@@ -93,7 +93,7 @@ async def new_report(message: Message, state: FSMContext):
         await message.answer("❗ Сиз бугунги хисоботни юборгансиз", reply_markup=main_kb)
         return
 
-    await message.answer("НАКД колдигини киритин:")
+    await message.answer("Кун бошига НАКД колдигини киритин:")
     await state.set_state(ReportForm.cash_start)
 
 # ===== ШАГИ =====
@@ -102,7 +102,7 @@ async def cash_start(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(cash_start=val)
-        await message.answer("КАРТА колдигини киритин:")
+        await message.answer("Кун бошига КАРТА колдигини киритин:")
         await state.set_state(ReportForm.card_start)
     except:
         await message.answer("Сон киритин")
@@ -180,18 +180,18 @@ async def finish(message: Message, state: FSMContext):
 ━━━━━━━━━━━━━━━━━━
 💵 НАКД
 ━━━━━━━━━━━━━━━━━━
-Бошига:      {format_money(data['cash_start'])} сум
-Кирим:       {format_money(data['cash_income'])} сум
-Чиким:       {format_money(data['cash_expense'])} сум
-Колдик:      {format_money(cash_end)} сум
+Кун бошига колдик:  {format_money(data['cash_start'])} сум
+Кирим:              {format_money(data['cash_income'])} сум
+Чиким:              {format_money(data['cash_expense'])} сум
+Кун охирига колдик: {format_money(cash_end)} сум
 
 ━━━━━━━━━━━━━━━━━━
 💳 КАРТА
 ━━━━━━━━━━━━━━━━━━
-Бошига:      {format_money(data['card_start'])} сум
-Кирим:       {format_money(data['card_income'])} сум
-Чиким:       {format_money(data['card_expense'])} сум
-Колдик:      {format_money(card_end)} сум
+Кун бошига колдик:  {format_money(data['card_start'])} сум
+Кирим:              {format_money(data['card_income'])} сум
+Чиким:              {format_money(data['card_expense'])} сум
+Кун охирига колдик: {format_money(card_end)} сум
 
 ━━━━━━━━━━━━━━━━━━
 📊 ЖАМИ
