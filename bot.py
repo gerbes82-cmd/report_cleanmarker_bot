@@ -14,12 +14,16 @@ from aiogram.filters import Command
 # ===== НАСТРОЙКИ =====
 TOKEN = os.getenv("TOKEN") or "ВСТАВЬ_ТОКЕН"
 CHANNEL_ID = int(os.getenv("CHANNEL_ID") or "-1000000000000")
+
+# 👉 ДОБАВЬ СЮДА ID сотрудников
 ALLOWED_USERS = [419259652, 6188049, 1054872862]
-def is_allowed(user_id):
-    return user_id in ALLOWED_USERS
-    
+
 bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
+
+# ===== ПРОВЕРКА ДОСТУПА =====
+def is_allowed(user_id):
+    return user_id in ALLOWED_USERS
 
 # ===== ВРЕМЯ =====
 def get_now():
@@ -76,7 +80,7 @@ async def new_report(message: Message, state: FSMContext):
     if not is_allowed(message.from_user.id):
         await message.answer("⛔ У вас нет доступа")
         return
-async def new_report(message: Message, state: FSMContext):
+
     date = get_now().strftime("%Y-%m-%d")
     user_id = message.from_user.id
 
