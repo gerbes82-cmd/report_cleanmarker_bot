@@ -67,7 +67,7 @@ class ReportForm(StatesGroup):
 @dp.message(Command("start"))
 async def start(message: Message):
     if not is_allowed(message.from_user.id):
-    await message.answer("⛔ Доступ запрещён")
+        await message.answer("⛔ Доступ запрещён")
     return
     await message.answer(
         "Хисобот яратиш учун пастдаги кнопкани босин",
@@ -78,7 +78,7 @@ async def start(message: Message):
 @dp.message(F.text == "📊 Новый отчёт")
 async def new_report(message: Message, state: FSMContext):
     if not is_allowed(message.from_user.id):
-    await message.answer("⛔ У вас нет доступа")
+        await message.answer("⛔ У вас нет доступа")
     return
 
     date = get_now().strftime("%Y-%m-%d")
