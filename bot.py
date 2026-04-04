@@ -1,13 +1,13 @@
 import asyncio
 import sqlite3
 from datetime import datetime
+import pytz
 
 from aiogram import Bot, Dispatcher
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.filters import Command
 
 # ===== НАСТРОЙКИ =====
 import os
@@ -15,8 +15,14 @@ import os
 TOKEN = os.getenv("TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
 
+
 bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
+
+# ===== ВРЕМЯ =====
+def get_now():
+    tz = pytz.timezone("Asia/Tashkent")
+    return datetime.now(tz)
 
 # ===== БАЗА =====
 conn = sqlite3.connect("reports.db")
@@ -32,12 +38,17 @@ CREATE TABLE IF NOT EXISTS reports (
 conn.commit()
 
 # ===== КНОПКИ =====
+main_kb = ReplyKeyboardMarkup(
+    keyboard=[[KeyboardButton(text="📊 Хисобот")]],
+    resize_keyboard=True
+)
+
 confirm_kb = ReplyKeyboardMarkup(
     keyboard=[[KeyboardButton(text="Ха"), KeyboardButton(text="Узгартириш")]],
     resize_keyboard=True
 )
 
-# ===== ФОРМАТ ДЕНЕГ =====
+# ===== ФОРМАТ =====
 def format_money(value):
     return f"{int(value):,}".replace(",", " ")
 
@@ -65,14 +76,21 @@ class ReportForm(StatesGroup):
     confirm_comment = State()
 
 # ===== СТАРТ =====
-@dp.message(Command("start"))
+@dp.message()
 async def start(message: Message):
-    await message.answer("Используй /report для отправки отчёта")
+    if message.text == "/start":
+        await message.answer(
+            "Хуш келибсиз 👋\nПастдаги кнопкани босин",
+            reply_markup=main_kb
+        )
 
-# ===== ПРОВЕРКА ДУБЛЯ =====
-@dp.message(Command("report"))
-async def start_report(message: Message, state: FSMContext):
-    date = datetime.now().strftime("%Y-%m-%d")
+# ===== НОВЫЙ ОТЧЁТ =====
+@dp.message()
+async def new_report(message: Message, state: FSMContext):
+    if message.text != "📊 Хисобот":
+        return
+
+    date = get_now().strftime("%Y-%m-%d")
     user_id = message.from_user.id
 
     cursor.execute(
@@ -81,13 +99,13 @@ async def start_report(message: Message, state: FSMContext):
     )
 
     if cursor.fetchone():
-        await message.answer("❗ Вы уже отправили отчёт за сегодня")
+        await message.answer("❗ Сиз бугунга хисобот жунатиб булдингиз", reply_markup=main_kb)
         return
 
-    await message.answer("Кун бошига Накд колдик:")
+    await message.answer("Кун бошига НАКД колдиги:")
     await state.set_state(ReportForm.cash_start)
 
-# ===== НАЛ =====
+# ===== ДАЛЕЕ ВСЯ ЛОГИКА =====
 @dp.message(ReportForm.cash_start)
 async def cash_start(message: Message, state: FSMContext):
     try:
@@ -101,12 +119,11 @@ async def cash_start(message: Message, state: FSMContext):
 @dp.message(ReportForm.confirm_cash_start)
 async def confirm_cash(message: Message, state: FSMContext):
     if message.text == "Ха":
-        await message.answer("Кун бошига Карта колдиги:")
+        await message.answer("Кун бошига КАРТА колдиги:")
         await state.set_state(ReportForm.card_start)
     else:
         await state.set_state(ReportForm.cash_start)
 
-# ===== КАРТА =====
 @dp.message(ReportForm.card_start)
 async def card_start(message: Message, state: FSMContext):
     try:
@@ -120,12 +137,11 @@ async def card_start(message: Message, state: FSMContext):
 @dp.message(ReportForm.confirm_card_start)
 async def confirm_card(message: Message, state: FSMContext):
     if message.text == "Ха":
-        await message.answer("Кирим Накд:")
+        await message.answer("НАКД кирим:")
         await state.set_state(ReportForm.cash_income)
     else:
         await state.set_state(ReportForm.card_start)
 
-# ===== ПОСТУПЛЕНИЯ НАЛ =====
 @dp.message(ReportForm.cash_income)
 async def cash_income(message: Message, state: FSMContext):
     try:
@@ -139,12 +155,11 @@ async def cash_income(message: Message, state: FSMContext):
 @dp.message(ReportForm.confirm_cash_income)
 async def confirm_cash_income(message: Message, state: FSMContext):
     if message.text == "Ха":
-        await message.answer("Кирим КАРТА:")
+        await message.answer("КАРТАга кирим:")
         await state.set_state(ReportForm.card_income)
     else:
         await state.set_state(ReportForm.cash_income)
 
-# ===== ПОСТУПЛЕНИЯ КАРТА =====
 @dp.message(ReportForm.card_income)
 async def card_income(message: Message, state: FSMContext):
     try:
@@ -158,12 +173,11 @@ async def card_income(message: Message, state: FSMContext):
 @dp.message(ReportForm.confirm_card_income)
 async def confirm_card_income(message: Message, state: FSMContext):
     if message.text == "Ха":
-        await message.answer("Чиким НАКД:")
+        await message.answer("НАКД чиким:")
         await state.set_state(ReportForm.cash_expense)
     else:
         await state.set_state(ReportForm.card_income)
 
-# ===== РАСХОД НАЛ =====
 @dp.message(ReportForm.cash_expense)
 async def cash_expense(message: Message, state: FSMContext):
     try:
@@ -177,12 +191,11 @@ async def cash_expense(message: Message, state: FSMContext):
 @dp.message(ReportForm.confirm_cash_expense)
 async def confirm_cash_expense(message: Message, state: FSMContext):
     if message.text == "Ха":
-        await message.answer("Чиким КАРТА:")
+        await message.answer("КАРТАдан чиким:")
         await state.set_state(ReportForm.card_expense)
     else:
         await state.set_state(ReportForm.cash_expense)
 
-# ===== РАСХОД КАРТА =====
 @dp.message(ReportForm.card_expense)
 async def card_expense(message: Message, state: FSMContext):
     try:
@@ -201,11 +214,10 @@ async def confirm_card_expense(message: Message, state: FSMContext):
     else:
         await state.set_state(ReportForm.card_expense)
 
-# ===== КОММЕНТАРИЙ =====
 @dp.message(ReportForm.comment)
 async def comment(message: Message, state: FSMContext):
     await state.update_data(comment=message.text)
-    await message.answer("Тугрими?", reply_markup=confirm_kb)
+    await message.answer("Все верно?", reply_markup=confirm_kb)
     await state.set_state(ReportForm.confirm_comment)
 
 # ===== ФИНАЛ =====
@@ -217,21 +229,15 @@ async def finish(message: Message, state: FSMContext):
 
     data = await state.get_data()
 
-    cash_start = data['cash_start']
-    card_start = data['card_start']
-    cash_income = data['cash_income']
-    card_income = data['card_income']
-    cash_expense = data['cash_expense']
-    card_expense = data['card_expense']
-    comment = "• " + data['comment'].replace(",", "\n•")
+    cash_end = data['cash_start'] + data['cash_income'] - data['cash_expense']
+    card_end = data['card_start'] + data['card_income'] - data['card_expense']
 
-    cash_end = cash_start + cash_income - cash_expense
-    card_end = card_start + card_income - card_expense
-
-    total_start = cash_start + card_start
+    total_start = data['cash_start'] + data['card_start']
     total_end = cash_end + card_end
 
-    date = datetime.now().strftime("%d.%m.%Y")
+    comment = "• " + data['comment'].replace(",", "\n•")
+
+    date = get_now().strftime("%d.%m.%Y")
     user = message.from_user.full_name
 
     text = f"""
@@ -240,40 +246,40 @@ async def finish(message: Message, state: FSMContext):
 👤 Ходим: {user}
 
 ━━━━━━━━━━━━━━━━━━
-💵 Накд
+💵 НАКД
 ━━━━━━━━━━━━━━━━━━
-Кун бошига колдик:        {format_money(cash_start)} сум
-Кирим:   {format_money(cash_income)} сум
-Чиким:       {format_money(cash_expense)} сум
-Кун охирига колдик:       {format_money(cash_end)} сум
+Кун бошига колдик:   {format_money(data['cash_start'])} сум
+Кирим:               {format_money(data['cash_income'])} сум
+Чиким:               {format_money(data['cash_expense'])} сум
+Кун охирига колдик:  {format_money(cash_end)} сум
 
 ━━━━━━━━━━━━━━━━━━
 💳 КАРТА
 ━━━━━━━━━━━━━━━━━━
-Кун бошига колдик:        {format_money(card_start)} сум
-Кирим:   {format_money(card_income)} сум
-Чиким:       {format_money(card_expense)} сум
-Кун охирига колдик:       {format_money(card_end)} сум
+Кун бошига колдик:   {format_money(data['card_start'])} сум
+Кирим:               {format_money(data['card_income'])} сум
+Чиким:               {format_money(data['card_expense'])} сум
+Кун охирига колдик:  {format_money(card_end)} сум
 
 ━━━━━━━━━━━━━━━━━━
-📊 УМУМИЙ
+📊 ЖАМИ
 ━━━━━━━━━━━━━━━━━━
-Кун бошига колдик:     {format_money(total_start)} сум
-Кун охирига колдик:      {format_money(total_end)} сум
+Кун бошига колдик:   {format_money(total_start)} сум
+Кун охирига колдик:  {format_money(total_end)} сум
 
 ━━━━━━━━━━━━━━━━━━
-📝 ЧИКИМЛАР
+📝 ЧИКИМ
 ━━━━━━━━━━━━━━━━━━
 {comment}
 """
 
     cursor.execute(
         "INSERT INTO reports (user_id, date) VALUES (?, ?)",
-        (message.from_user.id, datetime.now().strftime("%Y-%m-%d"))
+        (message.from_user.id, get_now().strftime("%Y-%m-%d"))
     )
     conn.commit()
 
-    await message.answer(text)
+    await message.answer(text, reply_markup=main_kb)
     await bot.send_message(CHANNEL_ID, text)
 
     await state.clear()
