@@ -8,6 +8,8 @@ from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.filters import Command
+from aiogram import F
 
 # ===== НАСТРОЙКИ =====
 import os
@@ -76,13 +78,12 @@ class ReportForm(StatesGroup):
     confirm_comment = State()
 
 # ===== СТАРТ =====
-@dp.message()
+@dp.message(Command("start"))
 async def start(message: Message):
-    if message.text == "/start":
-        await message.answer(
-            "Хуш келибсиз 👋\nПастдаги кнопкани босин",
-            reply_markup=main_kb
-        )
+    await message.answer(
+        "Хаш келибсиз 👋\nПастдаги кнопкани босин",
+        reply_markup=main_kb
+    )
 
 # ===== НОВЫЙ ОТЧЁТ =====
 @dp.message()
