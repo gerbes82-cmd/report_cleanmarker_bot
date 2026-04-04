@@ -38,7 +38,7 @@ conn.commit()
 
 # ===== КНОПКА =====
 main_kb = ReplyKeyboardMarkup(
-    keyboard=[[KeyboardButton(text="📊 Новый отчёт")]],
+    keyboard=[[KeyboardButton(text="📊 Хисобот")]],
     resize_keyboard=True
 )
 
@@ -60,12 +60,12 @@ class ReportForm(StatesGroup):
 @dp.message(Command("start"))
 async def start(message: Message):
     await message.answer(
-        "Нажмите кнопку для создания отчёта",
+        "Хисобот яратиш учун пастдаги кнопкани босин",
         reply_markup=main_kb
     )
 
 # ===== КНОПКА =====
-@dp.message(F.text == "📊 Новый отчёт")
+@dp.message(F.text == "📊 Хисобот")
 async def new_report(message: Message, state: FSMContext):
     date = get_now().strftime("%Y-%m-%d")
     user_id = message.from_user.id
@@ -76,10 +76,10 @@ async def new_report(message: Message, state: FSMContext):
     )
 
     if cursor.fetchone():
-        await message.answer("❗ Вы уже отправили отчёт за сегодня", reply_markup=main_kb)
+        await message.answer("❗ Сиз бугунги хисоботни юборгансиз", reply_markup=main_kb)
         return
 
-    await message.answer("Введите остаток НАЛИЧНЫХ:")
+    await message.answer("НАКД колдигини киритин:")
     await state.set_state(ReportForm.cash_start)
 
 # ===== ШАГИ =====
@@ -88,60 +88,60 @@ async def cash_start(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(cash_start=val)
-        await message.answer("Введите остаток НА КАРТЕ:")
+        await message.answer("КАРТА колдигини киритин:")
         await state.set_state(ReportForm.card_start)
     except:
-        await message.answer("Введите число")
+        await message.answer("Сон киритин")
 
 @dp.message(ReportForm.card_start)
 async def card_start(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(card_start=val)
-        await message.answer("Введите поступления НАЛИЧНЫМИ:")
+        await message.answer("НАКД кирим:")
         await state.set_state(ReportForm.cash_income)
     except:
-        await message.answer("Введите число")
+        await message.answer("Сон киритин")
 
 @dp.message(ReportForm.cash_income)
 async def cash_income(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(cash_income=val)
-        await message.answer("Введите поступления НА КАРТУ:")
+        await message.answer("КАРТА кирим:")
         await state.set_state(ReportForm.card_income)
     except:
-        await message.answer("Введите число")
+        await message.answer("Сон киритин")
 
 @dp.message(ReportForm.card_income)
 async def card_income(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(card_income=val)
-        await message.answer("Введите расходы НАЛИЧНЫМИ:")
+        await message.answer("НАКД чиким:")
         await state.set_state(ReportForm.cash_expense)
     except:
-        await message.answer("Введите число")
+        await message.answer("Сон киритин")
 
 @dp.message(ReportForm.cash_expense)
 async def cash_expense(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(cash_expense=val)
-        await message.answer("Введите расходы С КАРТЫ:")
+        await message.answer("КАРТА чиким:")
         await state.set_state(ReportForm.card_expense)
     except:
-        await message.answer("Введите число")
+        await message.answer("Сон киритин")
 
 @dp.message(ReportForm.card_expense)
 async def card_expense(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(card_expense=val)
-        await message.answer("Кратко опишите расходы:")
+        await message.answer("Чикимлар кискача таснифи:")
         await state.set_state(ReportForm.comment)
     except:
-        await message.answer("Введите число")
+        await message.answer("Сон киритин")
 
 @dp.message(ReportForm.comment)
 async def finish(message: Message, state: FSMContext):
@@ -159,34 +159,34 @@ async def finish(message: Message, state: FSMContext):
     user = message.from_user.full_name
 
     text = f"""
-📅 Отчёт за {date}
+📅 Хисобот {date}
 
-👤 Сотрудник: {user}
+👤 Ходим: {user}
 
 ━━━━━━━━━━━━━━━━━━
-💵 НАЛИЧНЫЕ
+💵 НАКД
 ━━━━━━━━━━━━━━━━━━
-Начало:        {format_money(data['cash_start'])} сум
-Поступления:   {format_money(data['cash_income'])} сум
-Расходы:       {format_money(data['cash_expense'])} сум
-Остаток:       {format_money(cash_end)} сум
+Бошига:      {format_money(data['cash_start'])} сум
+Кирим:       {format_money(data['cash_income'])} сум
+Чиким:       {format_money(data['cash_expense'])} сум
+Колдик:      {format_money(cash_end)} сум
 
 ━━━━━━━━━━━━━━━━━━
 💳 КАРТА
 ━━━━━━━━━━━━━━━━━━
-Начало:        {format_money(data['card_start'])} сум
-Поступления:   {format_money(data['card_income'])} сум
-Расходы:       {format_money(data['card_expense'])} сум
-Остаток:       {format_money(card_end)} сум
+Бошига:      {format_money(data['card_start'])} сум
+Кирим:       {format_money(data['card_income'])} сум
+Чиким:       {format_money(data['card_expense'])} сум
+Колдик:      {format_money(card_end)} сум
 
 ━━━━━━━━━━━━━━━━━━
-📊 ОБЩИЙ ИТОГ
+📊 ЖАМИ
 ━━━━━━━━━━━━━━━━━━
-На начало:     {format_money(total_start)} сум
-На конец:      {format_money(total_end)} сум
+Кун бошига:  {format_money(total_start)} сум
+Кун охирига: {format_money(total_end)} сум
 
 ━━━━━━━━━━━━━━━━━━
-📝 РАСХОДЫ
+📝 ЧИКИМЛАР ИЗОХИ
 ━━━━━━━━━━━━━━━━━━
 {comment}
 """
