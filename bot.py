@@ -86,10 +86,8 @@ async def start(message: Message):
     )
 
 # ===== НОВЫЙ ОТЧЁТ =====
-@dp.message()
+@dp.message(F.text == "📊 Хисобот")
 async def new_report(message: Message, state: FSMContext):
-    if message.text != "📊 Хисобот":
-        return
 
     date = get_now().strftime("%Y-%m-%d")
     user_id = message.from_user.id
