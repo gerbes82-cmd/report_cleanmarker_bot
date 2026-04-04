@@ -11,8 +11,11 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.filters import Command
 
 # ===== НАСТРОЙКИ =====
-TOKEN = "ВСТАВЬ_ТОКЕН"
-CHANNEL_ID = -100XXXXXXXXXX
+import os
+
+TOKEN = os.getenv("TOKEN")
+CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
