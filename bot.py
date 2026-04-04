@@ -2,6 +2,7 @@ import asyncio
 import sqlite3
 from datetime import datetime
 import pytz
+import os
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message, ReplyKeyboardMarkup, KeyboardButton
@@ -11,11 +12,8 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.filters import Command
 
 # ===== НАСТРОЙКИ =====
-import os
-
-TOKEN = os.getenv("TOKEN")
-CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
-
+TOKEN = os.getenv("TOKEN") or "ВСТАВЬ_ТОКЕН"
+CHANNEL_ID = int(os.getenv("CHANNEL_ID") or "-1000000000000")
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
@@ -44,11 +42,6 @@ main_kb = ReplyKeyboardMarkup(
     resize_keyboard=True
 )
 
-confirm_kb = ReplyKeyboardMarkup(
-    keyboard=[[KeyboardButton(text="Да"), KeyboardButton(text="Изменить")]],
-    resize_keyboard=True
-)
-
 # ===== ФОРМАТ =====
 def format_money(value):
     return f"{int(value):,}".replace(",", " ")
@@ -56,42 +49,24 @@ def format_money(value):
 # ===== СОСТОЯНИЯ =====
 class ReportForm(StatesGroup):
     cash_start = State()
-    confirm_cash_start = State()
-
     card_start = State()
-    confirm_card_start = State()
-
     cash_income = State()
-    confirm_cash_income = State()
-
     card_income = State()
-    confirm_card_income = State()
-
     cash_expense = State()
-    confirm_cash_expense = State()
-
     card_expense = State()
-    confirm_card_expense = State()
-
     comment = State()
-    confirm_comment = State()
 
 # ===== СТАРТ =====
 @dp.message(Command("start"))
 async def start(message: Message):
     await message.answer(
-        "Добро пожаловать 👋\nНажмите кнопку или используйте /report",
+        "Нажмите кнопку для создания отчёта",
         reply_markup=main_kb
     )
 
-# ===== КНОПКА → REPORT =====
+# ===== КНОПКА =====
 @dp.message(F.text == "📊 Новый отчёт")
-async def new_report_button(message: Message, state: FSMContext):
-    await start_report(message, state)
-
-# ===== REPORT =====
-@dp.message(Command("report"))
-async def start_report(message: Message, state: FSMContext):
+async def new_report(message: Message, state: FSMContext):
     date = get_now().strftime("%Y-%m-%d")
     user_id = message.from_user.id
 
@@ -101,136 +76,75 @@ async def start_report(message: Message, state: FSMContext):
     )
 
     if cursor.fetchone():
-        await message.answer("❗ Вы уже отправили отчёт за сегодня")
+        await message.answer("❗ Вы уже отправили отчёт за сегодня", reply_markup=main_kb)
         return
 
     await message.answer("Введите остаток НАЛИЧНЫХ:")
     await state.set_state(ReportForm.cash_start)
 
-# ===== НАЛ =====
+# ===== ШАГИ =====
 @dp.message(ReportForm.cash_start)
 async def cash_start(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(cash_start=val)
-        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
-        await state.set_state(ReportForm.confirm_cash_start)
+        await message.answer("Введите остаток НА КАРТЕ:")
+        await state.set_state(ReportForm.card_start)
     except:
         await message.answer("Введите число")
 
-@dp.message(ReportForm.confirm_cash_start)
-async def confirm_cash(message: Message, state: FSMContext):
-    if message.text == "Да":
-        await message.answer("Введите остаток НА КАРТЕ:")
-        await state.set_state(ReportForm.card_start)
-    else:
-        await state.set_state(ReportForm.cash_start)
-
-# ===== КАРТА =====
 @dp.message(ReportForm.card_start)
 async def card_start(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(card_start=val)
-        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
-        await state.set_state(ReportForm.confirm_card_start)
+        await message.answer("Введите поступления НАЛИЧНЫМИ:")
+        await state.set_state(ReportForm.cash_income)
     except:
         await message.answer("Введите число")
 
-@dp.message(ReportForm.confirm_card_start)
-async def confirm_card(message: Message, state: FSMContext):
-    if message.text == "Да":
-        await message.answer("Введите поступления НАЛИЧНЫМИ:")
-        await state.set_state(ReportForm.cash_income)
-    else:
-        await state.set_state(ReportForm.card_start)
-
-# ===== ДАЛЕЕ ЛОГИКА =====
 @dp.message(ReportForm.cash_income)
 async def cash_income(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(cash_income=val)
-        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
-        await state.set_state(ReportForm.confirm_cash_income)
-    except:
-        await message.answer("Введите число")
-
-@dp.message(ReportForm.confirm_cash_income)
-async def confirm_cash_income(message: Message, state: FSMContext):
-    if message.text == "Да":
         await message.answer("Введите поступления НА КАРТУ:")
         await state.set_state(ReportForm.card_income)
-    else:
-        await state.set_state(ReportForm.cash_income)
+    except:
+        await message.answer("Введите число")
 
 @dp.message(ReportForm.card_income)
 async def card_income(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(card_income=val)
-        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
-        await state.set_state(ReportForm.confirm_card_income)
-    except:
-        await message.answer("Введите число")
-
-@dp.message(ReportForm.confirm_card_income)
-async def confirm_card_income(message: Message, state: FSMContext):
-    if message.text == "Да":
         await message.answer("Введите расходы НАЛИЧНЫМИ:")
         await state.set_state(ReportForm.cash_expense)
-    else:
-        await state.set_state(ReportForm.card_income)
+    except:
+        await message.answer("Введите число")
 
 @dp.message(ReportForm.cash_expense)
 async def cash_expense(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(cash_expense=val)
-        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
-        await state.set_state(ReportForm.confirm_cash_expense)
-    except:
-        await message.answer("Введите число")
-
-@dp.message(ReportForm.confirm_cash_expense)
-async def confirm_cash_expense(message: Message, state: FSMContext):
-    if message.text == "Да":
         await message.answer("Введите расходы С КАРТЫ:")
         await state.set_state(ReportForm.card_expense)
-    else:
-        await state.set_state(ReportForm.cash_expense)
+    except:
+        await message.answer("Введите число")
 
 @dp.message(ReportForm.card_expense)
 async def card_expense(message: Message, state: FSMContext):
     try:
         val = float(message.text)
         await state.update_data(card_expense=val)
-        await message.answer(f"{format_money(val)} сум\nВсе верно?", reply_markup=confirm_kb)
-        await state.set_state(ReportForm.confirm_card_expense)
+        await message.answer("Кратко опишите расходы:")
+        await state.set_state(ReportForm.comment)
     except:
         await message.answer("Введите число")
 
-@dp.message(ReportForm.confirm_card_expense)
-async def confirm_card_expense(message: Message, state: FSMContext):
-    if message.text == "Да":
-        await message.answer("Кратко опишите расходы:")
-        await state.set_state(ReportForm.comment)
-    else:
-        await state.set_state(ReportForm.card_expense)
-
 @dp.message(ReportForm.comment)
-async def comment(message: Message, state: FSMContext):
-    await state.update_data(comment=message.text)
-    await message.answer("Все верно?", reply_markup=confirm_kb)
-    await state.set_state(ReportForm.confirm_comment)
-
-# ===== ФИНАЛ =====
-@dp.message(ReportForm.confirm_comment)
 async def finish(message: Message, state: FSMContext):
-    if message.text != "Да":
-        await state.set_state(ReportForm.comment)
-        return
-
     data = await state.get_data()
 
     cash_end = data['cash_start'] + data['cash_income'] - data['cash_expense']
@@ -239,7 +153,7 @@ async def finish(message: Message, state: FSMContext):
     total_start = data['cash_start'] + data['card_start']
     total_end = cash_end + card_end
 
-    comment = "• " + data['comment'].replace(",", "\n•")
+    comment = "• " + message.text.replace(",", "\n•")
 
     date = get_now().strftime("%d.%m.%Y")
     user = message.from_user.full_name
@@ -283,7 +197,7 @@ async def finish(message: Message, state: FSMContext):
     )
     conn.commit()
 
-    await message.answer(text)
+    await message.answer(text, reply_markup=main_kb)
     await bot.send_message(CHANNEL_ID, text)
 
     await state.clear()
