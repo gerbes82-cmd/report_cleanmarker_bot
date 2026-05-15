@@ -18,7 +18,7 @@ CHANNEL_ID = int(os.getenv("CHANNEL_ID") or "-1000000000000")
 # 👉 ДОБАВЬ СЮДА ID сотрудников
 ALLOWED_USERS = [419259652, 6188049, 1054872862]
 
-bot = Bot(token=TOKEN)
+bot = Bot(token=8555539646:AAFhxy3D7JZVQ0Z1qZHScpI2oTsLx0GL0r8)
 dp = Dispatcher(storage=MemoryStorage())
 
 # ===== ПРОВЕРКА ДОСТУПА =====
