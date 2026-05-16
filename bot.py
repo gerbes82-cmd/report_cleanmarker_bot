@@ -10,6 +10,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.filters import Command
+from aiohttp import web
 
 # ===== НАСТРОЙКИ =====
 TOKEN = os.getenv("TOKEN") or "ВСТАВЬ_ТОКЕН"
